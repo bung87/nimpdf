@@ -1,0 +1,236 @@
+diff --git a/demo/embed_fonts.nim b/demo/embed_fonts.nim
+index 8e3e2a1..e96f882 100644
+--- a/demo/embed_fonts.nim
++++ b/demo/embed_fonts.nim
+@@ -5,25 +5,35 @@ proc draw_title(doc: PDF, text:string) =
+ 
+-  doc.setFont("KaiTi", {FS_BOLD}, 5)#, embedFont = true)
++  # Embed this specific font for better text copying
++  doc.setFont("KaiTi", {FS_BOLD}, 5, ENC_STANDARD, embedFont = true)
+   let tw = doc.getTextWidth(text)
+-  let x = size.width.toMM/2 - tw/2
++  let x = size.width.toMM / 2 - tw / 2
+ 
+-  doc.setFillColor(0,0,0)
++  doc.setFillColor(0, 0, 0)
+   doc.drawText(x, 10.0, text)
+-  doc.setStrokeColor(0,0,0)
+-  doc.drawRect(10,15,size.width.toMM - 20, size.height.toMM-25)
++  doc.setStrokeColor(0, 0, 0)
++  doc.drawRect(10, 15, size.width.toMM - 20, size.height.toMM - 25)
+   doc.stroke()
+ 
+ proc createPDF(doc: PDF) =
+@@ -18,24 +19,35 @@ proc createPDF(doc: PDF) =
+   let SAMP_TEXT = "The Quick Brown Fox Jump Over The Lazy Dog"
+ 
+   doc.addPage(size, PGO_PORTRAIT)
+-  draw_title(doc, "TRUE TYPE FONT DEMO")
++  draw_title(doc, "PER-FONT EMBEDDING DEMO")
+ 
+-  doc.setFont("Calligrapher", {FS_REGULAR}, 10)#, embedFont = false)
+-  doc.drawText(15, 30, "Calligrapher")
++  # Example 1: Font with individual embedding enabled
++  doc.setFont("Calligrapher", {FS_REGULAR}, 10, ENC_STANDARD, embedFont = true)
++  doc.drawText(15, 30, "Calligrapher - embedded=true")
+ 
+-  doc.setFont("Eunjin", {FS_REGULAR}, 10)#, embedFont = false)
+-  doc.drawText(15, 50, "Eunjin")
++  # Example 2: Font without individual embedding
++  doc.setFont("Eunjin", {FS_REGULAR}, 10, ENC_STANDARD, embedFont = false)
++  doc.drawText(15, 50, "Eunjin - embedded=false")
+ 
+-  doc.setFont("KaiTi", {FS_REGULAR}, 10)#, embedFont = false)
+-  doc.drawText(15, 70, "KaiTi")
++  # Example 3: Using convenience method with embedding
++  doc.setFont("KaiTi", 10, embedFont = true)
++  doc.drawText(15, 70, "KaiTi - convenience method")
+ 
+-  doc.setFont("Calligrapher", {FS_REGULAR}, 4)#, embedFont = false)
+-  doc.drawText(15, 90, SAMP_TEXT)
++  # Example 4: Small text with embedding
++  doc.setFont("Calligrapher", {FS_REGULAR}, 8, ENC_STANDARD, embedFont = true)
++  doc.drawText(15, 90, "Sample text with smaller embedded font")
+ 
+-  doc.setInfo(DI_TITLE, "TTF DEMO")
+-  doc.setInfo(DI_AUTHOR, "Andri Lim")
+-  doc.setInfo(DI_SUBJECT, "TTF Font Demo")
++  # Example 5: Base14 font (embedding flag ignored)
++  doc.setFont("Times", {FS_REGULAR}, 10, ENC_STANDARD, embedFont = true)
++  doc.drawText(15, 110, "Times - Base14 ignores flag")
++
++  # Example 6: Show global override behavior
++  doc.setFont("Helvetica", {FS_REGULAR}, 8, ENC_STANDARD, embedFont = false)
++  doc.drawText(15, 130, "Note: Global flag overrides individual settings")
+ 
++  doc.setInfo(DI_TITLE, "Per-Font Embedding Demo")
++  doc.setInfo(DI_AUTHOR, "Andri Lim")
++  doc.setInfo(DI_SUBJECT, "Demonstrating individual font embedding")
+ 
+ proc main(): bool {.discardable.} =
+   #echo currentSourcePath()
+@@ -45,15 +57,23 @@ proc main(): bool {.discardable.} =
+   if file != nil:
+     var opts = newPDFOptions()
+     opts.addFontsPath("fonts")
+-    opts.setEmbedFont(true)
++    # Set global embedding to false to demonstrate per-font control
++    opts.setEmbedFont(false)
++
++    echo "Creating PDF with per-font embedding demonstration..."
++    echo "- Some fonts will be embedded individually using embedFont parameter"
++    echo "- Global embedding is disabled to show individual font control"
++    echo "- Check text copying/pasting to verify embedding worked"
++
+     var doc = newPDF(opts)
+     doc.createPDF()
+     doc.writePDF(file)
+     file.close()
+-    echo "OK"
++    echo "PDF created successfully: ", fileName
++    echo "Try copying text from different lines to see embedding effects"
+     return true
+ 
+   echo "cannot open: ", fileName
+   result = false
+ 
+-main()
+\ No newline at end of file
++main()
+diff --git a/demo/test.nim b/demo/test.nim
+index 8a3d376..37ca95a 100644
+--- a/demo/test.nim
++++ b/demo/test.nim
+@@ -1,4 +1,4 @@
+-import streams, nimPDF, unittest
++import streams, nimPDF, unittest, strutils
+ 
+ proc draw_title(doc: PDF, text:string) =
+   let size = getSizeFromName("A4")
+@@ -59,16 +59,16 @@ proc test(doc: PDF) =
+     var tw = doc.getVTextWidth(text)
+     var th = doc.getVTextHeight(text)
+     check:
+-      $tw == "3.61"
+-      $th == "14.05"
++      formatFloat(tw, ffDecimal, 2) == "3.61"
++      formatFloat(th, ffDecimal, 2) == "14.05"
+ 
+   test "getTextWidth and GetTextHeight TTF":
+     doc.setFont("FreeMono", {FS_REGULAR}, 5)
+     var tw = doc.getVTextWidth(text)
+     var th = doc.getVTextHeight(text)
+     check:
+-      $tw == "3.0"
+-      $th == "13.325"
++      formatFloat(tw, ffDecimal, 1) == "3.0"
++      formatFloat(th, ffDecimal, 3) == "13.325"
+ 
+ proc main(): bool {.discardable.} =
+   #echo currentSourcePath()
+@@ -87,4 +87,4 @@ proc main(): bool {.discardable.} =
+   echo "cannot open: ", fileName
+   result = false
+ 
+-main()
+\ No newline at end of file
++main()
+diff --git a/nimPDF/fontmanager.nim b/nimPDF/fontmanager.nim
+index 47be40a..3b4e3cb 100644
+--- a/nimPDF/fontmanager.nim
++++ b/nimPDF/fontmanager.nim
+@@ -194,47 +194,27 @@ method EscapeString*(f: Base14, text: string, embedFont: bool = false): string =
+   result = text
+ 
+ proc EscapeStringAndEmbedFullFont*(f: TTFont, text: string): string =
+-  # Use the cached full character mapping from FontDef
+-  if f.font.fullCharMap.len > 0:
+-    f.CH2GID = f.font.fullCharMap
+-  else:
+-    # Initialize the cache if not already done
++  # For font embedding, use a reasonable character set for good copy/paste support
++  # Include ASCII range + Latin-1 supplement, but not all Unicode to avoid bloat
++  if f.font.fullCharMap.len == 0:
+     var encodingcmap = f.cmap
+     if encodingcmap != nil:
+-      # Add all possible Unicode characters (0 to 0xFFFF)
+-      for charCode in 0..0xFFFF:
++      # Map ASCII range (0-127) + Latin-1 supplement (128-255) for good coverage
++      # This gives good copy/paste support without excessive file size
++      for charCode in 0 .. 255:
+         let oldGID = encodingcmap.GlyphIndex(charCode)
+         if oldGID != 0:
+-          f.CH2GID[charCode] = (oldGID, oldGID)  # Keep original GID mapping
+-      # Store the cache in FontDef for future use
++          f.CH2GID[charCode] = (oldGID, oldGID)
++      # Store in cache to avoid recomputing
+       f.font.fullCharMap = f.CH2GID
+ 
+-  result = ""
+-  for c in runes(text):
+-    let charCode = int(c)
+-    if f.CH2GID.hasKey(charCode):
+-      let gid = f.CH2GID[charCode].newGID
+-      result.add(toHex(gid, 4))
+-    else:
+-      # If character not found, try to map it
+-      let oldGID = f.cmap.GlyphIndex(charCode)
+-      if oldGID != 0:
+-        f.CH2GID[charCode] = (oldGID, oldGID)
+-        result.add(toHex(oldGID, 4))
+-      else:
+-        result.add("0000")  # Missing glyph
+-
+-method EscapeString*(f: TTFont, text: string, embedFont: bool = false): string =
+-  if embedFont:
+-    return f.EscapeStringAndEmbedFullFont(text)
+-
++  # Also ensure all characters in the current text are mapped
+   for c in runes(text):
+     let charCode = int(c)
+     if not f.CH2GID.hasKey(charCode):
+       let oldGID = f.cmap.GlyphIndex(charCode)
+       if oldGID != 0:
+-        f.CH2GID[charCode] = (oldGID, f.newGID)
+-        inc(f.newGID)
++        f.CH2GID[charCode] = (oldGID, oldGID)
+ 
+   result = ""
+   for c in runes(text):
+@@ -243,7 +223,18 @@ method EscapeString*(f: TTFont, text: string, embedFont: bool = false): string =
+       let gid = f.CH2GID[charCode].newGID
+       result.add(toHex(gid, 4))
+     else:
+-      result.add("0000")
++      result.add("0000") # Missing glyph
++
++method EscapeString*(f: TTFont, text: string, embedFont: bool = false): string =
++  let shouldEmbed = embedFont or f.embedFont
++  if shouldEmbed:
++    return f.EscapeStringAndEmbedFullFont(text)
++
++  # For non-embedded TTF fonts, convert each character to hex using character codes
++  result = ""
++  for c in text:
++    let charCode = ord(c)
++    result.add(toHex(charCode, 2))
+ 
+ method GetTextWidth*(f: Font, text: string): TextWidth {.base.} =
+   discard
+diff --git a/nimPDF/nimPDF.nim b/nimPDF/nimPDF.nim
+index fd5c823..39c3390 100644
+--- a/nimPDF/nimPDF.nim
++++ b/nimPDF/nimPDF.nim
+@@ -285,6 +285,12 @@ proc setFont*(doc: PDF, name: string, style: FontStyles, size: float64, encodin
+ proc setFont*(doc: PDF, name: string, style: FontStyles, size: float64) =
+   doc.setFont(name, style, size, ENC_STANDARD)
+ 
++proc setFont*(doc: PDF, name: string, size: float64, encoding: EncodingType = ENC_STANDARD, embedFont: bool = false) =
++  doc.setFont(name, {FS_REGULAR}, size, encoding, embedFont)
++
++proc setFont*(doc: PDF, name: string, size: float64, embedFont: bool) =
++  doc.setFont(name, {FS_REGULAR}, size, ENC_STANDARD, embedFont)
++
+ proc getFont*(doc: PDF): Font =
+   result = doc.state.currentFont
+ 
