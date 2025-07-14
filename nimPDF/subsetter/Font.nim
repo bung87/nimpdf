@@ -43,7 +43,6 @@ const
   #kulDsigTag = 0
   #kulDsigLength = 4
   #kulDsigOffset = 8
-
   SFNTVERSION_MAJOR = 1
   SFNTVERSION_MINOR = 0
 
@@ -52,12 +51,14 @@ type
   TableHeaderList = seq[Header]
 
   FontType* = enum
-    FT_BASE14, FT_TRUETYPE
+    FT_BASE14
+    FT_TRUETYPE
 
   Font* = ref object of RootObj
     ID*: int
     subType*: FontType
     searchName*: string
+    embedFont*: bool
 
   TONGIDCache* = tuple[oldGID, newGID: int]
   CH2GIDMAPCache* = OrderedTable[int, TONGIDCache]
@@ -66,7 +67,7 @@ type
     checksum: int64
     tables: FontTableMap
     sfntVersion, numTables, searchRange, entrySelector, rangeShift: int
-    fullCharMap*: CH2GIDMAPCache  # Cache for full character mapping
+    fullCharMap*: CH2GIDMAPCache # Cache for full character mapping
 
   FontArray* = seq[FontDef]
 
@@ -75,55 +76,77 @@ type
     firstChar*: int
     lastChar*: int
     fontFamily*: string
-    Flags*:int
-    BBox*: array[0..3, int]
+    Flags*: int
+    BBox*: array[0 .. 3, int]
     italicAngle*: float
     Ascent*: int
     Descent*: int
     capHeight*: int
-    stemV*:int
-    xHeight*:int
+    stemV*: int
+    xHeight*: int
     missingWidth*: int
 
 proc newTable(header: Header, data: FontData): FontTable =
   let tag = header.tag()
 
   case tag
-  of TAG.head: result = newHEADTable(header, data)
-  of TAG.cmap: result = newCMAPTable(header, data)
-  of TAG.hhea: result = newHHEATable(header, data)
-  of TAG.hmtx: result = newHMTXTable(header, data)
-  of TAG.maxp: result = newMAXPTable(header, data)
-  of TAG.vhea: result = newVHEATable(header, data)
-  of TAG.vmtx: result = newVMTXTable(header, data)
-  of TAG.name: result = newNAMETable(header, data)
-  of TAG.OS_2: result = newOS2Table(header, data)
-  of TAG.glyf: result = newGLYPHTable(header, data)
-  of TAG.loca: result = newLOCATable(header, data)
+  of TAG.head:
+    result = newHEADTable(header, data)
+  of TAG.cmap:
+    result = newCMAPTable(header, data)
+  of TAG.hhea:
+    result = newHHEATable(header, data)
+  of TAG.hmtx:
+    result = newHMTXTable(header, data)
+  of TAG.maxp:
+    result = newMAXPTable(header, data)
+  of TAG.vhea:
+    result = newVHEATable(header, data)
+  of TAG.vmtx:
+    result = newVMTXTable(header, data)
+  of TAG.name:
+    result = newNAMETable(header, data)
+  of TAG.OS_2:
+    result = newOS2Table(header, data)
+  of TAG.glyf:
+    result = newGLYPHTable(header, data)
+  of TAG.loca:
+    result = newLOCATable(header, data)
   #of Tag.EBDT, Tag.bdat:
-    #result = makeEbdtTableBuilder(header, data)
+  #result = makeEbdtTableBuilder(header, data)
   #of Tag.EBLC, Tag.bloc:
-    #result = makeEblcTableBuilder(header, data)
+  #result = makeEblcTableBuilder(header, data)
   #of Tag.EBSC:
-    #result = makeEbscTableBuilder(header, data)
-  of TAG.bhed: result = newHEADTable(header, data)
-  of TAG.hdmx: result = newHDMXTable(header, data)
-  of TAG.post: result = newPOSTTable(header, data)
+  #result = makeEbscTableBuilder(header, data)
+  of TAG.bhed:
+    result = newHEADTable(header, data)
+  of TAG.hdmx:
+    result = newHDMXTable(header, data)
+  of TAG.post:
+    result = newPOSTTable(header, data)
   else:
     new(result)
     initFontTable(result, header, data)
 
-proc getSfntVersion*(f: FontDef): int = f.sfntVersion
-proc getChecksum*(f: FontDef): int64 = f.checksum
-proc getNumTables*(f: FontDef): int = f.tables.len
+proc getSfntVersion*(f: FontDef): int =
+  f.sfntVersion
 
-proc hasTable*(f: FontDef, tag: TTag): bool = f.tables.hasKey(tag)
+proc getChecksum*(f: FontDef): int64 =
+  f.checksum
+
+proc getNumTables*(f: FontDef): int =
+  f.tables.len
+
+proc hasTable*(f: FontDef, tag: TTag): bool =
+  f.tables.hasKey(tag)
 
 proc getTable*(f: FontDef, tag: TTag): FontTable =
-  if not f.hasTable(tag): return nil
+  if not f.hasTable(tag):
+    return nil
   result = f.tables[tag]
 
-proc getTableMap*(f: FontDef): FontTableMap = f.tables
+proc getTableMap*(f: FontDef): FontTableMap =
+  f.tables
 
 proc newFont*(): FontDef =
   new(result)
@@ -132,43 +155,49 @@ proc newFont*(): FontDef =
 proc readHeader(f: FontDef, fis: FontInputStream): TableHeaderList =
   result = @[]
 
-  f.sfntVersion   = fis.readFixed()
-  f.numTables     = fis.readUShort()
-  f.searchRange   = fis.readUShort()
+  f.sfntVersion = fis.readFixed()
+  f.numTables = fis.readUShort()
+  f.searchRange = fis.readUShort()
   f.entrySelector = fis.readUShort()
-  f.rangeShift    = fis.readUShort()
+  f.rangeShift = fis.readUShort()
 
-  for table_number in 0..f.numTables-1:
+  for table_number in 0 .. f.numTables - 1:
     #Need to use temporary vars here.  C++ evaluates function parameters from
     #right to left and thus breaks the order of input stream.
-    let tag      = TTag(fis.readULongAsInt())
+    let tag = TTag(fis.readULongAsInt())
     let checksum = fis.readULong()
-    let offset   = fis.readULongAsInt()
-    let length   = fis.readULongAsInt()
-    var header   = initHeader(tag, checksum, offset, length)
+    let offset = fis.readULongAsInt()
+    let length = fis.readULongAsInt()
+    var header = initHeader(tag, checksum, offset, length)
     result.add(header)
 
-  result.sort(proc(x,y: Header): int = offsetSortedComparator(x,y) )
+  result.sort(
+    proc(x, y: Header): int =
+      offsetSortedComparator(x, y)
+  )
 
 proc readHeader(f: FontDef, fd: FontData, offset: int): TableHeaderList =
   result = @[]
-  f.sfntVersion   = fd.readFixed(offset + kSfntVersion)
-  f.numTables     = fd.readUShort(offset + kNumTables)
-  f.searchRange   = fd.readUShort(offset + kSearchRange)
+  f.sfntVersion = fd.readFixed(offset + kSfntVersion)
+  f.numTables = fd.readUShort(offset + kNumTables)
+  f.searchRange = fd.readUShort(offset + kSearchRange)
   f.entrySelector = fd.readUShort(offset + kEntrySelector)
-  f.rangeShift    = fd.readUShort(offset + kRangeShift)
+  f.rangeShift = fd.readUShort(offset + kRangeShift)
 
   var tableOffset = offset + kTableRecordBegin
-  for table_number in 0..f.numTables-1:
-    let tag      = TTag(fd.readULongAsInt(tableOffset + kTableTag))
+  for table_number in 0 .. f.numTables - 1:
+    let tag = TTag(fd.readULongAsInt(tableOffset + kTableTag))
     let checksum = fd.readULong(tableOffset + kTableCheckSum)
-    let offset   = fd.readULongAsInt(tableOffset + kTableOffset)
-    let length   = fd.readULongAsInt(tableOffset + kTableLength)
-    var header   = initHeader(tag, checksum, offset, length)
+    let offset = fd.readULongAsInt(tableOffset + kTableOffset)
+    let length = fd.readULongAsInt(tableOffset + kTableLength)
+    var header = initHeader(tag, checksum, offset, length)
     result.add(header)
     inc(tableOffset, kTableRecordSize)
 
-  result.sort(proc(x,y: Header): int = offsetSortedComparator(x,y) )
+  result.sort(
+    proc(x, y: Header): int =
+      offsetSortedComparator(x, y)
+  )
 
 proc loadTable(headers: TableHeaderList, fis: FontInputStream): FontTableMap =
   result = initTable[TTag, FontTable]()
@@ -197,17 +226,24 @@ proc InterRelateTables(f: FontDef) =
   var vmtx = VMTXTable(f.getTable(TAG.vmtx))
 
   if vmtx != nil:
-    if maxp != nil: vmtx.setNumGlyphs(maxp.NumGlyphs())
-    if vhea != nil: vmtx.setNumberOfVMetrics(vhea.NumberOfVMetrics())
+    if maxp != nil:
+      vmtx.setNumGlyphs(maxp.NumGlyphs())
+    if vhea != nil:
+      vmtx.setNumberOfVMetrics(vhea.NumberOfVMetrics())
 
   if hmtx != nil:
-    if maxp != nil: hmtx.setNumGlyphs(maxp.NumGlyphs())
-    if hhea != nil: hmtx.setNumberOfHMetrics(hhea.NumberOfHMetrics())
+    if maxp != nil:
+      hmtx.setNumGlyphs(maxp.NumGlyphs())
+    if hhea != nil:
+      hmtx.setNumberOfHMetrics(hhea.NumberOfHMetrics())
 
   if loca != nil:
-    if maxp != nil: loca.SetNumGlyphs(maxp.NumGlyphs())
-    if head != nil: loca.SetFormatVersion(head.GetIndexToLocFormat())
-    if glyf != nil: glyf.SetLoca(loca)
+    if maxp != nil:
+      loca.SetNumGlyphs(maxp.NumGlyphs())
+    if head != nil:
+      loca.SetFormatVersion(head.GetIndexToLocFormat())
+    if glyf != nil:
+      glyf.SetLoca(loca)
 
   #Note: In C++, hdmx can be nil in a subsetter.
   if maxp != nil and hdmx != nil:
@@ -253,7 +289,7 @@ proc loadCollection*(fd: FontData): FontArray =
   let numFonts = fd.readULongAsInt(kNumFonts)
 
   var offsetTableOffset = kOffsetTable
-  for i in 0..numFonts-1:
+  for i in 0 .. numFonts - 1:
     let offset = fd.readULongAsInt(offsetTableOffset)
     var font = newFont()
     loadFont(font, fd, offset)
@@ -311,11 +347,15 @@ proc serializeFont*(tables: var seq[FontTable]): FontData =
   let numTables = tables.len
   var offset = kSfntHeaderSize + kTableRecordSize * numTables
 
-  tables.sort(proc(x,y: FontTable): int = cmp( int(x.headerTag()), int(y.headerTag()) ) )
+  tables.sort(
+    proc(x, y: FontTable): int =
+      cmp(int(x.headerTag()), int(y.headerTag()))
+  )
 
   var headoffset = 0
-  for i in 0..tables.len-1:
-    if tables[i] == nil: continue
+  for i in 0 .. tables.len - 1:
+    if tables[i] == nil:
+      continue
     if tables[i].headerTag() == TAG.head:
       HEADTable(tables[i]).SetChecksumAdjustment(0)
       headoffset = offset
@@ -326,7 +366,8 @@ proc serializeFont*(tables: var seq[FontTable]): FontData =
 
   var fd = newFontData(offset)
 
-  discard fd.writeFixed(kSfntVersion, fixed1616Fixed(SFNTVERSION_MAJOR, SFNTVERSION_MINOR))
+  discard
+    fd.writeFixed(kSfntVersion, fixed1616Fixed(SFNTVERSION_MAJOR, SFNTVERSION_MINOR))
   discard fd.writeUShort(kNumTables, numTables)
 
   let log2_of_max_power_of_2 = Log2(numTables)
@@ -337,8 +378,9 @@ proc serializeFont*(tables: var seq[FontTable]): FontData =
   discard fd.writeUShort(kRangeShift, (numTables * kTableRecordSize) - searchRange)
 
   var tableOffset = kTableRecordBegin
-  for i in 0..tables.len-1:
-    if tables[i] == nil: continue
+  for i in 0 .. tables.len - 1:
+    if tables[i] == nil:
+      continue
     let header = tables[i].getHeader()
     discard fd.writeULong(tableOffset + kTableTag, int(header.tag()))
     discard fd.writeULong(tableOffset + kTableCheckSum, header.checksum())
@@ -346,13 +388,14 @@ proc serializeFont*(tables: var seq[FontTable]): FontData =
     discard fd.writeULong(tableOffset + kTableLength, header.length())
     tableOffset += kTableRecordSize
 
-  for i in 0..tables.len-1:
-    if tables[i] == nil: continue
+  for i in 0 .. tables.len - 1:
+    if tables[i] == nil:
+      continue
     discard tables[i].serialize(fd, tableOffset)
     let tableSize = tables[i].dataLength()
     let paddingSize = ((tableSize + 3) and not 3) - tableSize
     tableOffset += tableSize
-    for i in 0..paddingSize-1:
+    for i in 0 .. paddingSize - 1:
       discard fd.writeByte(tableOffset, chr(0))
       inc(tableOffset)
 
@@ -369,8 +412,8 @@ proc embedFullFont*(font: FontDef, newTag: string): FontData =
   var hmtx = HMTXTable(font.getTable(TAG.hmtx))
   var name = NAMETable(font.getTable(TAG.name))
   var post = POSTTable(font.getTable(TAG.post))
-  var os2  = OS2Table(font.getTable(TAG.OS_2))
-  var cvt  = font.getTable(TAG.cvt)
+  var os2 = OS2Table(font.getTable(TAG.OS_2))
+  var cvt = font.getTable(TAG.cvt)
   var fpgm = font.getTable(TAG.fpgm)
   var prep = font.getTable(TAG.prep)
   var gasp = font.getTable(TAG.gasp)
@@ -379,9 +422,12 @@ proc embedFullFont*(font: FontDef, newTag: string): FontData =
 
   var isSymbol = false
   if os2 != nil:
-    isSymbol = os2.IsSymbolCharSet() and
-      cmap.CMAPavailable(proc(platformID, encodingID, format: int): bool =
-        result = (platformID == 3) and (encodingID == 0) )
+    isSymbol =
+      os2.IsSymbolCharSet() and
+      cmap.CMAPavailable(
+        proc(platformID, encodingID, format: int): bool =
+          result = (platformID == 3) and (encodingID == 0)
+      )
 
   # Use the cached full character mapping from FontDef
   var CH2GID = initOrderedTable[int, TONGID]()
@@ -391,7 +437,7 @@ proc embedFullFont*(font: FontDef, newTag: string): FontData =
       CH2GID = font.fullCharMap
     else:
       # Initialize the cache if not already done
-      for i in 0..0xFFFF:
+      for i in 0 .. 0xFFFF:
         let gid = encodingcmap.GlyphIndex(i)
         if gid != 0:
           CH2GID[i] = (gid, gid)
@@ -408,7 +454,11 @@ proc embedFullFont*(font: FontDef, newTag: string): FontData =
   var newpost = encodePOSTTable(post)
 
   # Keep all original tables
-  var tables = @[newcmap, newglyf, head, hhea, newhmtx, newloca, maxp, newname, os2, newpost, prep, cvt, fpgm, gasp]
+  var tables =
+    @[
+      newcmap, newglyf, head, hhea, newhmtx, newloca, maxp, newname, os2, newpost, prep,
+      cvt, fpgm, gasp,
+    ]
   if vhea != nil and vmtx != nil:
     vhea.SetNumberOfVMetrics(maxp.NumGlyphs())
     var newvmtx = vmtx # Keep original vmtx table
@@ -426,8 +476,8 @@ proc subset*(font: FontDef, CH2GID: CH2GIDMAP, newTag: string): FontData =
   var hmtx = HMTXTable(font.getTable(TAG.hmtx))
   var name = NAMETable(font.getTable(TAG.name))
   var post = POSTTable(font.getTable(TAG.post))
-  var os2  = OS2Table(font.getTable(TAG.OS_2))
-  var cvt  = font.getTable(TAG.cvt)
+  var os2 = OS2Table(font.getTable(TAG.OS_2))
+  var cvt = font.getTable(TAG.cvt)
   var fpgm = font.getTable(TAG.fpgm)
   var prep = font.getTable(TAG.prep)
   var gasp = font.getTable(TAG.gasp)
@@ -436,9 +486,12 @@ proc subset*(font: FontDef, CH2GID: CH2GIDMAP, newTag: string): FontData =
 
   var isSymbol = false
   if os2 != nil:
-    isSymbol = os2.IsSymbolCharSet() and
-      cmap.CMAPavailable(proc(platformID, encodingID, format: int): bool =
-        result = (platformID == 3) and (encodingID == 0) )
+    isSymbol =
+      os2.IsSymbolCharSet() and
+      cmap.CMAPavailable(
+        proc(platformID, encodingID, format: int): bool =
+          result = (platformID == 3) and (encodingID == 0)
+      )
 
   var GID2GID = initOrderedTable[int, int](math.nextPowerOfTwo(CH2GID.len))
   GID2GID[0] = 0
@@ -446,7 +499,10 @@ proc subset*(font: FontDef, CH2GID: CH2GIDMAP, newTag: string): FontData =
     if not GID2GID.hasKey(val.oldGID):
       GID2GID[val.oldGID] = val.newGID
 
-  GID2GID.sort(proc(x,y: tuple[key,val: int] ):int = cmp(x.val, y.val) )
+  GID2GID.sort(
+    proc(x, y: tuple[key, val: int]): int =
+      cmp(x.val, y.val)
+  )
 
   var newglyf = EncodeGLYPHTable(glyf, GID2GID) #GID2GID maybe larger after this line
   var newloca = newglyf.GetLoca()
@@ -459,7 +515,11 @@ proc subset*(font: FontDef, CH2GID: CH2GIDMAP, newTag: string): FontData =
   var newpost = encodePOSTTable(post)
 
   #cmap, glyf, head, hhea, hmtx, loca, maxp, name, post, os/2
-  var tables = @[newcmap, newglyf, head, hhea, newhmtx, newloca, maxp, newname, os2, newpost, prep, cvt, fpgm, gasp]
+  var tables =
+    @[
+      newcmap, newglyf, head, hhea, newhmtx, newloca, maxp, newname, os2, newpost, prep,
+      cvt, fpgm, gasp,
+    ]
   if vhea != nil and vmtx != nil:
     vhea.SetNumberOfVMetrics(GID2GID.len)
     var newvmtx = encodeVMTXTable(vmtx, GID2GID)
@@ -474,7 +534,7 @@ proc newFontDescriptor*(font: FontDef, CH2GID: CH2GIDMAP): FontDescriptor =
 
   var name = NAMETable(font.getTable(TAG.name))
   var post = POSTTable(font.getTable(TAG.post))
-  var os2  = OS2Table(font.getTable(TAG.OS_2))
+  var os2 = OS2Table(font.getTable(TAG.OS_2))
   var head = HEADTable(font.getTable(TAG.head))
   var hhea = HHEATable(font.getTable(TAG.hhea))
   var hmtx = HMTXTable(font.getTable(TAG.hmtx))
@@ -492,9 +552,12 @@ proc newFontDescriptor*(font: FontDef, CH2GID: CH2GIDMAP): FontDescriptor =
     Ascent = os2.STypoAscender()
     Descent = os2.STypoDescender()
     LineGap = os2.STypoLineGap()
-    isSymbol = os2.IsSymbolCharSet() and
-      cmap.CMAPavailable(proc(platformID, encodingID, format: int): bool =
-        result = (platformID == 3) and (encodingID == 0) )
+    isSymbol =
+      os2.IsSymbolCharSet() and
+      cmap.CMAPavailable(
+        proc(platformID, encodingID, format: int): bool =
+          result = (platformID == 3) and (encodingID == 0)
+      )
 
   fd.capHeight = Ascent
   fd.xHeight = 0
@@ -521,23 +584,28 @@ proc newFontDescriptor*(font: FontDef, CH2GID: CH2GIDMAP): FontDescriptor =
   fd.Ascent = math.round(float(Ascent) * scaleFactor).int
   fd.Descent = math.round(float(Descent) * scaleFactor).int
 
-  let isSerif  = familyClass in {1,2,3,4,5,7}
+  let isSerif = familyClass in {1, 2, 3, 4, 5, 7}
   let isScript = familyClass == 10
 
   if post != nil:
     let raw = post.ItalicAngle()
     var hi = raw shr 16
     var lo = raw and 0xFFFF
-    if (hi and 0x8000) != 0: hi = -((hi xor 0xFFFF) + 1)
+    if (hi and 0x8000) != 0:
+      hi = -((hi xor 0xFFFF) + 1)
     fd.italicAngle = toFloat(hi) + (toFloat(lo) / 65536)
   else:
     fd.italicAngle = 0.0
 
   fd.Flags = 0
-  if post.IsFixedPitch() != 0: fd.Flags = fd.Flags or 1
-  if isSerif: fd.Flags = fd.Flags or (1 shl 1)
-  if isScript: fd.Flags = fd.Flags or (1 shl 3)
-  if fd.italicAngle != 0: fd.Flags = fd.Flags or (1 shl 6)
+  if post.IsFixedPitch() != 0:
+    fd.Flags = fd.Flags or 1
+  if isSerif:
+    fd.Flags = fd.Flags or (1 shl 1)
+  if isScript:
+    fd.Flags = fd.Flags or (1 shl 3)
+  if fd.italicAngle != 0:
+    fd.Flags = fd.Flags or (1 shl 6)
 
   if isSymbol:
     fd.Flags = fd.Flags or (1 shl 2)

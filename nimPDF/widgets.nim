@@ -1,6 +1,4 @@
-import
-  objects, fontmanager, gstate, page, tables, image, strutils, basic2d,
-  macros
+import objects, fontmanager, gstate, page, tables, image, strutils, basic2d, macros
 
 const
   FIELD_TYPE_BUTTON = "Btn"
@@ -95,13 +93,13 @@ type
     naPrintDialog
 
   SepStyle* = enum
-    ssCommaDot   # 1,234.56
-    ssDotOnly    # 1234.56
-    ssDotComma   # 1.234,56
-    ssCommaOnly  # 1234,56
+    ssCommaDot # 1,234.56
+    ssDotOnly # 1234.56
+    ssDotComma # 1.234,56
+    ssCommaOnly # 1234,56
 
   NegStyle* = enum
-    nsDash       # '-'
+    nsDash # '-'
     nsRedText
     nsParenBlack
     nsParenRed
@@ -328,30 +326,29 @@ type
     iconFitToBorder: bool
     iconLeftOver: array[2, float64]
 
-const
-  FormatDateStr: array[FormatDateType, string] = [
-    "m/d", "m/d/yy", "m/d/yyyy", "mm/dd/yy", "mm/dd/yyyy",
-    "mm/yy", "mm/yyyy", "d-mmm", "d-mmm-yy", "d-mmm-yyyy",
-    "dd-mmm-yy", "dd-mmm-yyy", "yy-mm-dd", "yyyy-mm-dd",
-    "mmm-yy", "mmm-yyyy", "mmmm-yy", "mmmm-yyyy",
-    "mmm d, yyyy", "mmmm d, yyyy", "m/d/yy h:MM tt",
-    "m/d/yyyy h:MM tt", "m/d/yy HH:MM", "m/d/yyyy HH MM"]
+const FormatDateStr: array[FormatDateType, string] = [
+  "m/d", "m/d/yy", "m/d/yyyy", "mm/dd/yy", "mm/dd/yyyy", "mm/yy", "mm/yyyy", "d-mmm",
+  "d-mmm-yy", "d-mmm-yyyy", "dd-mmm-yy", "dd-mmm-yyy", "yy-mm-dd", "yyyy-mm-dd",
+  "mmm-yy", "mmm-yyyy", "mmmm-yy", "mmmm-yyyy", "mmm d, yyyy", "mmmm d, yyyy",
+  "m/d/yy h:MM tt", "m/d/yyyy h:MM tt", "m/d/yy HH:MM", "m/d/yyyy HH MM",
+]
 
 # convert enum with holes to array
 # useful to replace enum low(T)..high(T) for loop
 macro toArray(x: type): untyped =
   let fields = getImpl(x)[2]
   result = nnkBracket.newTree
-  for i in 1..<fields.len:
+  for i in 1 ..< fields.len:
     let field = fields[i][1]
-    result.add quote do: `x`(`field`)
+    result.add quote do:
+      `x`(`field`)
 
 proc newBorder(): Border =
   new(result)
   result.style = bsSolid
   result.width = 1
   result.dashPattern = @[]
-  result.colorRGB = initRGB(0,0,0)
+  result.colorRGB = initRGB(0, 0, 0)
   result.colorType = ColorRGB
 
 proc setWidth(self: Border, w: int) =
@@ -378,14 +375,18 @@ proc createObject(self: Border): PdfObject =
   var dict = newDictObj()
   dict.addNumber("W", self.width)
   case self.style
-  of bsSolid: dict.addName("S", "S")
+  of bsSolid:
+    dict.addName("S", "S")
   of bsDashed:
     dict.addName("S", "D")
     var arr = newArray(self.dashPattern)
     dict.addElement("D", arr)
-  of bsBeveled: dict.addName("S", "B")
-  of bsInset: dict.addName("S", "I")
-  of bsUnderline: dict.addName("S", "U")
+  of bsBeveled:
+    dict.addName("S", "B")
+  of bsInset:
+    dict.addName("S", "I")
+  of bsUnderline:
+    dict.addName("S", "U")
   result = dict
 
 proc newArray(c: RGBColor): ArrayObj =
@@ -395,8 +396,10 @@ proc newArray(c: CMYKColor): ArrayObj =
   result = newArray(c.c, c.m, c.y, c.k)
 
 proc newColorArray(colorType: ColorType, rgb: RGBColor, cmyk: CMYKColor): ArrayObj =
-  if colorType == ColorRGB: result = newArray(rgb)
-  else: result = newArray(cmyk)
+  if colorType == ColorRGB:
+    result = newArray(rgb)
+  else:
+    result = newArray(cmyk)
 
 proc setBit[T: enum](x: var int, bit: T) =
   x = x or (1 shl (ord(bit) - 1))
@@ -406,11 +409,20 @@ proc removeBit[T: enum](x: var int, bit: T) =
 
 proc getJSCode(fmt: FormatObject, fn: string): string =
   case fmt.kind
-  of FormatNone: result = ""
-  of FormatPercent: result = "AFPercent_$1($2,$3);" % [fn, $fmt.decimalNumber, $ord(fmt.sepStyle)]
+  of FormatNone:
+    result = ""
+  of FormatPercent:
+    result = "AFPercent_$1($2,$3);" % [fn, $fmt.decimalNumber, $ord(fmt.sepStyle)]
   of FormatNumber:
-    result = "AFNumber_$1($2,$3,$4,0,\"$5\",$6);" % [fn, $fmt.decimalNumber, $ord(fmt.sepStyle),
-      $ord(fmt.negStyle), fmt.strCurrency, $fmt.currencyPrepend]
+    result =
+      "AFNumber_$1($2,$3,$4,0,\"$5\",$6);" % [
+        fn,
+        $fmt.decimalNumber,
+        $ord(fmt.sepStyle),
+        $ord(fmt.negStyle),
+        fmt.strCurrency,
+        $fmt.currencyPrepend,
+      ]
   of FormatTime:
     result = "AFTime_$1($2);" % [fn, $ord(fmt.formatTimeType)]
   of FormatDate:
@@ -418,15 +430,16 @@ proc getJSCode(fmt: FormatObject, fn: string): string =
   of FormatSpecial:
     result = "AFSpecial_$1(\"$1\");" % [fn, $ord(fmt.special)]
   of FormatCustom:
-    if fn == "Keystroke": result = fmt.keyStroke
-    else: result = fmt.JSfmt
+    if fn == "Keystroke":
+      result = fmt.keyStroke
+    else:
+      result = fmt.JSfmt
 
 method createDefaultAP*(self: Widget): AppearanceStream {.base.} =
   discard
 
 proc createPDFObject(self: Widget): DictObj =
-  const
-    hmSTR: array[HighLightMode, char] = ['N', 'I', 'O', 'P', 'T']
+  const hmSTR: array[HighLightMode, char] = ['N', 'I', 'O', 'P', 'T']
 
   var dict = self.dictObj
   dict.addName("Type", "Annot")
@@ -438,10 +451,13 @@ proc createPDFObject(self: Widget): DictObj =
 
   var AnnotFlag = 0
 
-  case self.visibility:
-  of Visible: AnnotFlag.setBit(afPrint)
-  of Hidden: AnnotFlag.setBit(afHidden)
-  of VisibleNotPrintable: discard
+  case self.visibility
+  of Visible:
+    AnnotFlag.setBit(afPrint)
+  of Hidden:
+    AnnotFlag.setBit(afHidden)
+  of VisibleNotPrintable:
+    discard
   of HiddenButPrintable:
     AnnotFlag.setBit(afPrint)
     AnnotFlag.setBit(afHidden)
@@ -465,22 +481,32 @@ proc createPDFObject(self: Widget): DictObj =
   var rc = newArray(self.rect)
   dict.addElement("Rect", rc)
 
-  var font = self.state.makeFont(self.fontFamily, self.fontStyles, self.fontEncoding)
+  var font =
+    self.state.makeFont(self.fontFamily, self.fontStyles, self.fontEncoding, false)
   let fontID = $font.ID
 
   if self.fontColorType == ColorRGB:
     let c = self.fontColorRGB
-    dict.addString("DA", "/F$1 $2 Tf $3 $4 $5 rg" % [fontID, f2s(self.fontSize), f2s(c.r), f2s(c.g), f2s(c.b)])
+    dict.addString(
+      "DA",
+      "/F$1 $2 Tf $3 $4 $5 rg" %
+        [fontID, f2s(self.fontSize), f2s(c.r), f2s(c.g), f2s(c.b)],
+    )
   else:
     let c = self.fontColorCMYK
-    dict.addString("DA", "/F$1 $2 Tf $3 $4 $5 $6 k" % [fontID, f2s(self.fontSize), f2s(c.c), f2s(c.m), f2s(c.y), f2s(c.k)])
+    dict.addString(
+      "DA",
+      "/F$1 $2 Tf $3 $4 $5 $6 k" %
+        [fontID, f2s(self.fontSize), f2s(c.c), f2s(c.m), f2s(c.y), f2s(c.k)],
+    )
 
   var aa: DictObj
 
   if self.format != nil:
     var k = newDictObj()
     var f = newDictObj()
-    if aa.isNil: aa = newDictObj()
+    if aa.isNil:
+      aa = newDictObj()
     k.addName("S", "JavaScript")
     f.addName("S", "JavaScript")
     f.addString("JS", self.format.getJSCode("Keystroke"))
@@ -489,7 +515,8 @@ proc createPDFObject(self: Widget): DictObj =
     aa.addElement("F", f)
 
   if self.validateScript.len > 0:
-    if aa.isNil: aa = newDictObj()
+    if aa.isNil:
+      aa = newDictObj()
     var v = newDictObj()
     v.addName("S", "JavaScript")
     if self.validateScript.len > 80:
@@ -499,7 +526,8 @@ proc createPDFObject(self: Widget): DictObj =
     aa.addElement("V", v)
 
   if self.calculateScript.len > 0:
-    if aa.isNil: aa = newDictObj()
+    if aa.isNil:
+      aa = newDictObj()
     var c = newDictObj()
     c.addName("S", "JavaScript")
     if self.calculateScript.len > 80:
@@ -508,7 +536,8 @@ proc createPDFObject(self: Widget): DictObj =
       c.addString("JS", self.calculateScript)
     aa.addElement("C", c)
 
-  if aa != nil: dict.addElement("AA", aa)
+  if aa != nil:
+    dict.addElement("AA", aa)
   result = self.dictObj
 
 proc putAP(self: Widget, ap: AppearanceStream, code: string, resourceDict: DictObj) =
@@ -518,16 +547,19 @@ proc putAP(self: Widget, ap: AppearanceStream, code: string, resourceDict: DictO
   currAP.addNumber("FormType", 1)
   currAP.addElement("Resources", resourceDict)
   var r = self.rect
-  var rc = newArray(r.x, r.y, r.x+r.w, r.y+r.h)
+  var rc = newArray(r.x, r.y, r.x + r.w, r.y + r.h)
   currAP.addElement("BBox", rc)
-  var m = newArray(self.matrix.ax, self.matrix.ay, self.matrix.bx, self.matrix.by, self.matrix.tx, self.matrix.ty)
+  var m = newArray(
+    self.matrix.ax, self.matrix.ay, self.matrix.bx, self.matrix.by, self.matrix.tx,
+    self.matrix.ty,
+  )
   currAP.addElement("Matrix", m)
 
   var apDict = newDictObj()
   apDict.addElement(code, currAP) # or APsubdir
   self.dictObj.addElement("AP", apDict)
 
-method finalizeObject(self: Widget; page, parent, resourceDict: DictObj) =
+method finalizeObject(self: Widget, page, parent, resourceDict: DictObj) =
   self.dictObj.addElement("DR", resourceDict)
   self.dictObj.addElement("P", page)
   self.dictObj.addElement("Parent", parent)
@@ -537,8 +569,10 @@ method finalizeObject(self: Widget; page, parent, resourceDict: DictObj) =
   const FormActionTriggerStr: array[FormActionTrigger, string] =
     ["U", "D", "E", "X", "Fo", "Bl", "PO", "PC", "PV", "PI"]
 
-  const FormActionKindStr: array[FormActionKind, string] =
-    ["URI", "ResetForm", "SubmitForm", "JavaScript", "JavaScript", "Named", "GoTo", "GoToR", "Launch"]
+  const FormActionKindStr: array[FormActionKind, string] = [
+    "URI", "ResetForm", "SubmitForm", "JavaScript", "JavaScript", "Named", "GoTo",
+    "GoToR", "Launch",
+  ]
 
   if self.actions.len > 0:
     aa = DictObj(self.dictObj.getItem("AA", CLASS_DICT))
@@ -566,21 +600,27 @@ method finalizeObject(self: Widget; page, parent, resourceDict: DictObj) =
         action.addString("F", x.url)
         var flags: int = 0
         if x.sfFields.len > 0:
-          if x.sfExclude: flags = flags and (1 shr 1)
+          if x.sfExclude:
+            flags = flags and (1 shr 1)
           var arr = newArrayObj()
           for c in x.sfFields:
             arr.add(c.dictObj)
           action.addElement("Fields", arr)
 
         case x.format
-        of EmailFormData: discard
-        of PDF_Format: flags = flags and (1 shr 9)
-        of HTML_Format: flags = flags and (1 shr 3)
-        of XFDF_Format: flags = flags and (1 shr 6)
+        of EmailFormData:
+          discard
+        of PDF_Format:
+          flags = flags and (1 shr 9)
+        of HTML_Format:
+          flags = flags and (1 shr 3)
+        of XFDF_Format:
+          flags = flags and (1 shr 6)
 
         action.addNumber("Flags", flags)
       of fakEmailEntirePDF:
-        let js = "this.mailDoc(false, \"$1\", \"$2\", \"$3\", \"$4\", \"$5\");" %
+        let js =
+          "this.mailDoc(false, \"$1\", \"$2\", \"$3\", \"$4\", \"$5\");" %
           [x.to, x.cc, x.bcc, x.title, x.body]
 
         if js.len > 80:
@@ -593,8 +633,8 @@ method finalizeObject(self: Widget; page, parent, resourceDict: DictObj) =
         else:
           action.addString("JS", x.jsScript)
       of fakNamedAction:
-        const NamedActionStr: array[NamedAction, string] = [
-          "FirstPage", "NextPage", "PrevPage", "LastPage", "PrintDialog"]
+        const NamedActionStr: array[NamedAction, string] =
+          ["FirstPage", "NextPage", "PrevPage", "LastPage", "PrintDialog"]
         action.addName("N", NamedActionStr[x.namedAction])
       of fakGotoLocalPage:
         var arr = toObject(x.localDest)
@@ -682,16 +722,22 @@ proc setRotation*(self: Widget, angle: int) =
   self.rotation = angle
 
 proc setReadOnly*(self: Widget, val: bool) =
-  if val: self.FieldFlag.setBit(ffReadOnly)
-  else: self.FieldFlag.removeBit(ffReadOnly)
+  if val:
+    self.FieldFlag.setBit(ffReadOnly)
+  else:
+    self.FieldFlag.removeBit(ffReadOnly)
 
 proc setRequired*(self: Widget, val: bool) =
-  if val: self.FieldFlag.setBit(ffRequired)
-  else: self.FieldFlag.removeBit(ffRequired)
+  if val:
+    self.FieldFlag.setBit(ffRequired)
+  else:
+    self.FieldFlag.removeBit(ffRequired)
 
 proc setNoExport*(self: Widget, val: bool) =
-  if val: self.FieldFlag.setBit(ffNoExport)
-  else: self.FieldFlag.removeBit(ffNoExport)
+  if val:
+    self.FieldFlag.setBit(ffNoExport)
+  else:
+    self.FieldFlag.removeBit(ffNoExport)
 
 proc setFont*(self: Widget, family: string) =
   self.fontFamily = family
@@ -705,13 +751,13 @@ proc setFontSize*(self: Widget, size: float64) =
 proc setFontEncoding*(self: Widget, enc: EncodingType) =
   self.fontEncoding = enc
 
-proc setFontColor*(self: Widget, r,g,b: float64) =
+proc setFontColor*(self: Widget, r, g, b: float64) =
   self.fontColorType = ColorRGB
-  self.fontColorRGB = initRGB(r,g,b)
+  self.fontColorRGB = initRGB(r, g, b)
 
-proc setFontColor*(self: Widget, c,m,y,k: float64) =
+proc setFontColor*(self: Widget, c, m, y, k: float64) =
   self.fontColorType = ColorCMYK
-  self.fontColorCMYK = initCMYK(c,m,y,k)
+  self.fontColorCMYK = initCMYK(c, m, y, k)
 
 proc setFontColor*(self: Widget, col: RGBColor) =
   self.fontColorType = ColorRGB
@@ -721,13 +767,13 @@ proc setFontColor*(self: Widget, col: CMYKColor) =
   self.fontColorType = ColorCMYK
   self.fontColorCMYK = col
 
-proc setFillColor*(self: Widget, r,g,b: float64) =
+proc setFillColor*(self: Widget, r, g, b: float64) =
   self.fillColorType = ColorRGB
-  self.fillColorRGB = initRGB(r,g,b)
+  self.fillColorRGB = initRGB(r, g, b)
 
-proc setFillColor*(self: Widget, c,m,y,k: float64) =
+proc setFillColor*(self: Widget, c, m, y, k: float64) =
   self.fillColorType = ColorCMYK
-  self.fillColorCMYK = initCMYK(c,m,y,k)
+  self.fillColorCMYK = initCMYK(c, m, y, k)
 
 proc setFillColor*(self: Widget, col: RGBColor) =
   self.fillColorType = ColorRGB
@@ -737,78 +783,90 @@ proc setFillColor*(self: Widget, col: CMYKColor) =
   self.fillColorType = ColorCMYK
   self.fillColorCMYK = col
 
-proc setBorderColor*(self: Widget, r,g,b: float64) =
-  if self.border.isNil: self.border = newBorder()
-  self.border.setColor(initRGB(r,g,b))
+proc setBorderColor*(self: Widget, r, g, b: float64) =
+  if self.border.isNil:
+    self.border = newBorder()
+  self.border.setColor(initRGB(r, g, b))
 
-proc setBorderColor*(self: Widget, c,m,y,k: float64) =
-  if self.border.isNil: self.border = newBorder()
-  self.border.setColor(initCMYK(c,m,y,k))
+proc setBorderColor*(self: Widget, c, m, y, k: float64) =
+  if self.border.isNil:
+    self.border = newBorder()
+  self.border.setColor(initCMYK(c, m, y, k))
 
 proc setBorderColor*(self: Widget, col: RGBColor) =
-  if self.border.isNil: self.border = newBorder()
+  if self.border.isNil:
+    self.border = newBorder()
   self.border.setColor(col)
 
 proc setBorderColor*(self: Widget, col: CMYKColor) =
-  if self.border.isNil: self.border = newBorder()
+  if self.border.isNil:
+    self.border = newBorder()
   self.border.setColor(col)
 
 proc setBorderWidth*(self: Widget, w: int) =
-  if self.border.isNil: self.border = newBorder()
+  if self.border.isNil:
+    self.border = newBorder()
   self.border.setWidth(w)
 
 proc setBorderStyle*(self: Widget, style: BorderStyle) =
-  if self.border.isNil: self.border = newBorder()
+  if self.border.isNil:
+    self.border = newBorder()
   self.border.setStyle(style)
 
 proc setBorderDash*(self: Widget, dash: openArray[int]) =
-  if self.border.isNil: self.border = newBorder()
+  if self.border.isNil:
+    self.border = newBorder()
   self.border.setDash(dash)
 
-proc addActionOpenWebLink*(self: Widget, trigger: FormActionTrigger, uri: string, isMap: bool) =
-  var action = FormAction(
-    trigger: trigger,
-    kind: fakOpenWebLink,
-    uri: uri,
-    isMap: isMap)
+proc addActionOpenWebLink*(
+    self: Widget, trigger: FormActionTrigger, uri: string, isMap: bool
+) =
+  var action =
+    FormAction(trigger: trigger, kind: fakOpenWebLink, uri: uri, isMap: isMap)
   self.actions.add action
 
 proc addActionResetForm*(self: Widget, trigger: FormActionTrigger) =
-  var action = FormAction(
-    trigger: trigger,
-    kind: fakResetForm,
-    rfFields: @[],
-    rfExclude: false)
+  var action =
+    FormAction(trigger: trigger, kind: fakResetForm, rfFields: @[], rfExclude: false)
   self.actions.add action
 
-proc addActionResetForm*(self: Widget, trigger: FormActionTrigger, fields: openArray[Widget], exclude: bool) =
+proc addActionResetForm*(
+    self: Widget, trigger: FormActionTrigger, fields: openArray[Widget], exclude: bool
+) =
   var action = FormAction(
-    trigger: trigger,
-    kind: fakResetForm,
-    rfFields: @fields,
-    rfExclude: exclude)
+    trigger: trigger, kind: fakResetForm, rfFields: @fields, rfExclude: exclude
+  )
   self.actions.add action
 
-proc addActionSubmitForm*(self: Widget, trigger: FormActionTrigger, format: FormSubmitFormat, url: string) =
+proc addActionSubmitForm*(
+    self: Widget, trigger: FormActionTrigger, format: FormSubmitFormat, url: string
+) =
   var action = FormAction(
-    trigger: trigger,
-    kind: fakSubmitForm,
-    format: format,
-    sfFields: @[],
-    url: url)
+    trigger: trigger, kind: fakSubmitForm, format: format, sfFields: @[], url: url
+  )
   self.actions.add action
 
-proc addActionSubmitForm*(self: Widget, trigger: FormActionTrigger, format: FormSubmitFormat, url: string, fields: openArray[Widget], exclude: bool) =
+proc addActionSubmitForm*(
+    self: Widget,
+    trigger: FormActionTrigger,
+    format: FormSubmitFormat,
+    url: string,
+    fields: openArray[Widget],
+    exclude: bool,
+) =
   var action = FormAction(
     trigger: trigger,
     kind: fakSubmitForm,
     format: format,
     sfFields: @fields,
     sfExclude: exclude,
-    url: url)
+    url: url,
+  )
   self.actions.add action
 
-proc addActionEmailEntirePDF*(self: Widget, trigger: FormActionTrigger; to, cc, bcc, title, body: string) =
+proc addActionEmailEntirePDF*(
+    self: Widget, trigger: FormActionTrigger, to, cc, bcc, title, body: string
+) =
   var action = FormAction(
     trigger: trigger,
     kind: fakEmailEntirePDF,
@@ -816,83 +874,77 @@ proc addActionEmailEntirePDF*(self: Widget, trigger: FormActionTrigger; to, cc, 
     cc: cc,
     bcc: bcc,
     title: title,
-    body: body)
+    body: body,
+  )
   self.actions.add action
 
 proc addActionRunJS*(self: Widget, trigger: FormActionTrigger, script: string) =
-  var action = FormAction(
-    trigger: trigger,
-    kind: fakRunJS,
-    jsScript: script)
+  var action = FormAction(trigger: trigger, kind: fakRunJS, jsScript: script)
   self.actions.add action
 
 proc addActionNamed*(self: Widget, trigger: FormActionTrigger, name: NamedAction) =
-  var action = FormAction(
-    trigger: trigger,
-    kind: fakNamedAction,
-    namedAction: name)
+  var action = FormAction(trigger: trigger, kind: fakNamedAction, namedAction: name)
   self.actions.add action
 
-proc addActionGotoLocalPage*(self: Widget, trigger: FormActionTrigger, dest: Destination) =
-  var action = FormAction(
-    trigger: trigger,
-    kind: fakGotoLocalPage,
-    localDest: dest)
+proc addActionGotoLocalPage*(
+    self: Widget, trigger: FormActionTrigger, dest: Destination
+) =
+  var action = FormAction(trigger: trigger, kind: fakGotoLocalPage, localDest: dest)
   self.actions.add action
 
-proc addActionGotoAnotherPDF*(self: Widget, trigger: FormActionTrigger, path: string, pageNo: int) =
+proc addActionGotoAnotherPDF*(
+    self: Widget, trigger: FormActionTrigger, path: string, pageNo: int
+) =
   var action = FormAction(
-    trigger: trigger,
-    kind: fakGotoAnotherPDF,
-    remotePage: pageNo,
-    path: path)
+    trigger: trigger, kind: fakGotoAnotherPDF, remotePage: pageNo, path: path
+  )
   self.actions.add action
 
-proc addActionLaunchApp*(self: Widget, trigger: FormActionTrigger; app, params, operation, defaultDir: string) =
+proc addActionLaunchApp*(
+    self: Widget, trigger: FormActionTrigger, app, params, operation, defaultDir: string
+) =
   var action = FormAction(
     trigger: trigger,
     kind: fakLaunchApp,
     app: app,
     params: params,
     operation: operation,
-    defaultDir: defaultDir)
+    defaultDir: defaultDir,
+  )
   self.actions.add action
 
-proc formatNumber*(self: Widget, decimalNumber: int, sepStyle: SepStyle, negStyle: NegStyle, strCurrency: string = "", currencyPrepend: bool = false) =
+proc formatNumber*(
+    self: Widget,
+    decimalNumber: int,
+    sepStyle: SepStyle,
+    negStyle: NegStyle,
+    strCurrency: string = "",
+    currencyPrepend: bool = false,
+) =
   self.format = FormatObject(
     kind: FormatNumber,
     decimalNumber: decimalNumber,
     sepStyle: sepStyle,
     negStyle: negStyle,
     strCurrency: strCurrency,
-    currencyPrepend: currencyPrepend)
+    currencyPrepend: currencyPrepend,
+  )
 
 proc formatPercent*(self: Widget, decimalNumber: int, sepStyle: SepStyle) =
-  self.format = FormatObject(
-  kind: FormatPercent,
-  decimalNumber: decimalNumber,
-  sepStyle: sepStyle)
+  self.format =
+    FormatObject(kind: FormatPercent, decimalNumber: decimalNumber, sepStyle: sepStyle)
 
 proc formatDate*(self: Widget, formatType: FormatDateType) =
-  self.format = FormatObject(
-  kind: FormatDate,
-  formatDateType: formatType)
+  self.format = FormatObject(kind: FormatDate, formatDateType: formatType)
 
 proc formatTime*(self: Widget, formatType: FormatTimeType) =
-  self.format = FormatObject(
-  kind: FormatTime,
-  formatTimeType: formatType)
+  self.format = FormatObject(kind: FormatTime, formatTimeType: formatType)
 
 proc formatSpecial*(self: Widget, special: SpecialFormat) =
-  self.format = FormatObject(
-  kind: FormatSpecial,
-  special: special)
+  self.format = FormatObject(kind: FormatSpecial, special: special)
 
 proc formatCustom*(self: Widget, JSfmt, keyStroke: string) =
-  self.format = FormatObject(
-  kind: FormatCustom,
-  JSfmt: JSfmt,
-  keyStroke: keyStroke)
+  self.format = FormatObject(kind: FormatCustom, JSfmt: JSfmt, keyStroke: keyStroke)
 
 #[
 // 0 <= N <= 100
@@ -945,10 +997,10 @@ proc setHighLightMode*(self: Widget, mode: HighLightMode) =
   self.highLightMode = mode
 
 #----------------------TEXT FIELD
-proc newTextField*(doc: DocState, x,y,w,h: float64, id: string): TextField =
+proc newTextField*(doc: DocState, x, y, w, h: float64, id: string): TextField =
   new(result)
   result.init(doc, id)
-  result.rect = initRect(x,y,w,h)
+  result.rect = initRect(x, y, w, h)
   result.kind = wkTextField
   result.align = tfaLeft
   result.maxChars = 0
@@ -994,10 +1046,10 @@ method createDefaultAP*(self: TextField): AppearanceStream =
   result = ap
 
 #----------------------CHECK BOX
-proc newCheckBox*(doc: DocState, x,y,w,h: float64, id: string): CheckBox =
+proc newCheckBox*(doc: DocState, x, y, w, h: float64, id: string): CheckBox =
   new(result)
   result.init(doc, id)
-  result.rect = initRect(x,y,w,h)
+  result.rect = initRect(x, y, w, h)
   result.kind = wkCheckBox
   result.shape = "\x35"
   result.checkedByDefault = false
@@ -1022,10 +1074,10 @@ method createDefaultAP*(self: CheckBox): AppearanceStream =
   result = ap
 
 #----------------------RADIO BUTTON
-proc newRadioButton*(doc: DocState, x,y,w,h: float64, id: string): RadioButton =
+proc newRadioButton*(doc: DocState, x, y, w, h: float64, id: string): RadioButton =
   new(result)
   result.init(doc, id)
-  result.rect = initRect(x,y,w,h)
+  result.rect = initRect(x, y, w, h)
   result.kind = wkRadioButton
   result.shape = "\6C"
   result.checkedByDefault = false
@@ -1056,10 +1108,10 @@ method createDefaultAP*(self: RadioButton): AppearanceStream =
   result = ap
 
 #---------------------COMBO BOX
-proc newComboBox*(doc: DocState, x,y,w,h: float64, id: string): ComboBox =
+proc newComboBox*(doc: DocState, x, y, w, h: float64, id: string): ComboBox =
   new(result)
   result.init(doc, id)
-  result.rect = initRect(x,y,w,h)
+  result.rect = initRect(x, y, w, h)
   result.kind = wkComboBox
   result.editable = false
   result.sortItem = false
@@ -1077,10 +1129,14 @@ method createObject(self: ComboBox): PdfObject =
   var dict = self.createPDFObject()
   dict.addName("FT", FIELD_TYPE_CHOICE)
   self.FieldFlag.setBit(cfCombo)
-  if self.editable: self.FieldFlag.setBit(cfEdit)
-  if self.sortItem: self.FieldFlag.setBit(cfSort)
-  if not self.spellCheck: self.FieldFlag.setBit(cfDoNotSpellCheck)
-  if self.commitOnSelChange: self.FieldFlag.setBit(cfCommitOnSelChange)
+  if self.editable:
+    self.FieldFlag.setBit(cfEdit)
+  if self.sortItem:
+    self.FieldFlag.setBit(cfSort)
+  if not self.spellCheck:
+    self.FieldFlag.setBit(cfDoNotSpellCheck)
+  if self.commitOnSelChange:
+    self.FieldFlag.setBit(cfCommitOnSelChange)
   result = dict
 
 method createDefaultAP*(self: ComboBox): AppearanceStream =
@@ -1088,10 +1144,10 @@ method createDefaultAP*(self: ComboBox): AppearanceStream =
   result = ap
 
 #---------------------LIST BOX
-proc newListBox*(doc: DocState, x,y,w,h: float64, id: string): ListBox =
+proc newListBox*(doc: DocState, x, y, w, h: float64, id: string): ListBox =
   new(result)
   result.init(doc, id)
-  result.rect = initRect(x,y,w,h)
+  result.rect = initRect(x, y, w, h)
   result.kind = wkListBox
   result.multipleSelect = false
   result.sortItem = false
@@ -1108,10 +1164,14 @@ proc setMultipleSelect*(self: ListBox, val: bool) =
 method createObject(self: ListBox): PdfObject =
   var dict = self.createPDFObject()
   dict.addName("FT", FIELD_TYPE_CHOICE)
-  if self.multipleSelect: self.FieldFlag.setBit(cfMultiSelect)
-  if self.sortItem: self.FieldFlag.setBit(cfSort)
-  if not self.spellCheck: self.FieldFlag.setBit(cfDoNotSpellCheck)
-  if self.commitOnSelChange: self.FieldFlag.setBit(cfCommitOnSelChange)
+  if self.multipleSelect:
+    self.FieldFlag.setBit(cfMultiSelect)
+  if self.sortItem:
+    self.FieldFlag.setBit(cfSort)
+  if not self.spellCheck:
+    self.FieldFlag.setBit(cfDoNotSpellCheck)
+  if self.commitOnSelChange:
+    self.FieldFlag.setBit(cfCommitOnSelChange)
   result = dict
 
 method createDefaultAP*(self: ListBox): AppearanceStream =
@@ -1119,10 +1179,10 @@ method createDefaultAP*(self: ListBox): AppearanceStream =
   result = ap
 
 #---------------------PUSH BUTTON
-proc newPushButton*(doc: DocState, x,y,w,h: float64, id: string): PushButton =
+proc newPushButton*(doc: DocState, x, y, w, h: float64, id: string): PushButton =
   new(result)
   result.init(doc, id)
-  result.rect = initRect(x,y,w,h)
+  result.rect = initRect(x, y, w, h)
   result.kind = wkPushButton
   result.caption = ""
   result.rollOverCaption = ""

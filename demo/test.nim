@@ -1,16 +1,16 @@
-import streams, nimPDF, unittest
+import streams, nimPDF, unittest, strutils
 
-proc draw_title(doc: PDF, text:string) =
+proc draw_title(doc: PDF, text: string) =
   let size = getSizeFromName("A4")
 
   doc.setFont("Helvetica", {FS_BOLD}, 5)
   let tw = doc.getTextWidth(text)
-  let x = size.width.toMM/2 - tw/2
+  let x = size.width.toMM / 2 - tw / 2
 
-  doc.setFillColor(0,0,0)
+  doc.setFillColor(0, 0, 0)
   doc.drawText(x, 10.0, text)
-  doc.setStrokeColor(0,0,0)
-  doc.drawRect(10,15,size.width.toMM - 20, size.height.toMM-25)
+  doc.setStrokeColor(0, 0, 0)
+  doc.drawRect(10, 15, size.width.toMM - 20, size.height.toMM - 25)
   doc.stroke()
 
 proc createPDF(doc: PDF) =
@@ -59,16 +59,16 @@ proc test(doc: PDF) =
     var tw = doc.getVTextWidth(text)
     var th = doc.getVTextHeight(text)
     check:
-      $tw == "3.61"
-      $th == "14.05"
+      formatFloat(tw, ffDecimal, 2) == "3.61"
+      formatFloat(th, ffDecimal, 2) == "14.05"
 
   test "getTextWidth and GetTextHeight TTF":
     doc.setFont("FreeMono", {FS_REGULAR}, 5)
     var tw = doc.getVTextWidth(text)
     var th = doc.getVTextHeight(text)
     check:
-      $tw == "3.0"
-      $th == "13.325"
+      formatFloat(tw, ffDecimal, 1) == "3.0"
+      formatFloat(th, ffDecimal, 3) == "13.325"
 
 proc main(): bool {.discardable.} =
   #echo currentSourcePath()
