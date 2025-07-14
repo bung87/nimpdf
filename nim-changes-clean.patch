@@ -2,25 +2,19 @@ diff --git a/demo/embed_fonts.nim b/demo/embed_fonts.nim
 index 8e3e2a1..e96f882 100644
 --- a/demo/embed_fonts.nim
 +++ b/demo/embed_fonts.nim
-@@ -5,25 +5,35 @@ proc draw_title(doc: PDF, text:string) =
+@@ -5,10 +5,11 @@ proc draw_title(doc: PDF, text:string) =
+   let size = getSizeFromName("A4")
  
 -  doc.setFont("KaiTi", {FS_BOLD}, 5)#, embedFont = true)
 +  # Embed this specific font for better text copying
 +  doc.setFont("KaiTi", {FS_BOLD}, 5, ENC_STANDARD, embedFont = true)
    let tw = doc.getTextWidth(text)
--  let x = size.width.toMM/2 - tw/2
-+  let x = size.width.toMM / 2 - tw / 2
+   let x = size.width.toMM/2 - tw/2
  
--  doc.setFillColor(0,0,0)
-+  doc.setFillColor(0, 0, 0)
+   doc.setFillColor(0,0,0)
    doc.drawText(x, 10.0, text)
--  doc.setStrokeColor(0,0,0)
--  doc.drawRect(10,15,size.width.toMM - 20, size.height.toMM-25)
-+  doc.setStrokeColor(0, 0, 0)
-+  doc.drawRect(10, 15, size.width.toMM - 20, size.height.toMM - 25)
-   doc.stroke()
- 
- proc createPDF(doc: PDF) =
+   doc.setStrokeColor(0,0,0)
+   doc.drawRect(10,15,size.width.toMM - 20, size.height.toMM-25)
 @@ -18,24 +19,35 @@ proc createPDF(doc: PDF) =
    let SAMP_TEXT = "The Quick Brown Fox Jump Over The Lazy Dog"
  
